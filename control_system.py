@@ -86,16 +86,16 @@ def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
         pause_button.label.set_text(
             "Resume" if pause_button.label.get_text() == "Pause" else "Pause")
     pause_button.on_clicked(adv_toggle_pause)
-    @ignore(IndexError)
-    def get_frame():
-        return x_data[-1] + 1
     def update_plot(frame_index):
+        @ignore(IndexError, default=frame_index)
+        def get_frame():
+            return x_data[-1] + 1
         try:
             temperature, pressure = queue.get_nowait()
         except Empty:
             pass
         else:
-            x_data.append(get_frame() or frame_index)
+            x_data.append(get_frame())
             temp_data.append(temperature)
             pressure_data.append(pressure)
             temp_line.set_data(x_data, temp_data)
