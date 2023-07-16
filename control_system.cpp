@@ -81,11 +81,11 @@ public:
         std::normal_distribution<double> temperature_distribution(2.0, 2.0);
         std::normal_distribution<double> pressure_distribution(0.5, 0.5);
 
-        double temperature = 20.0; // Initial temperature in degrees Celsius
-        double pressure = 1.0;     // Initial pressure in atmospheres
+        temperatureSensor.update(20.0); // Initial temperature in degrees Celsius
+        pressureSensor.update(1.0); // Initial pressure in atmospheres
 
-        double setpoint_temperature = 50.0; // Setpoint temperature in degrees Celsius
-        double setpoint_pressure = 2.5;     // Setpoint pressure in atmospheres
+        const auto setpoint_temperature = 50.0; // Setpoint temperature in degrees Celsius
+        const auto setpoint_pressure = 2.5;     // Setpoint pressure in atmospheres
 
         run_state = RUNNING;
 
@@ -95,17 +95,16 @@ public:
             if (run_state == PAUSED) continue;
 
             // Update temperature based on previous temperature, random fluctuations, and control input
-            double temperature_fluctuation = temperature_distribution(generator);
-            double control_input_temperature = temperatureController.control(setpoint_temperature, temperature);
-            temperature += -0.1 * (temperature - 20) + temperature_fluctuation + control_input_temperature;
+            const auto measured_temperature = temperatureSensor.get_data();
+            const auto temperature_fluctuation = temperature_distribution(generator);
+            const auto control_input_temperature = temperatureController.control(setpoint_temperature, measured_temperature);
+            temperatureSensor.update(measured_temperature + -0.1 * (measured_temperature - 20) + temperature_fluctuation + control_input_temperature);
 
             // Update pressure based on temperature (assuming ideal gas), random fluctuations, and control input
-            double pressure_fluctuation = pressure_distribution(generator);
-            double control_input_pressure = pressureController.control(setpoint_pressure, pressure);
-            pressure += 0.05 * (temperature - pressure) + pressure_fluctuation + control_input_pressure;
-
-            temperatureSensor.update(temperature);
-            pressureSensor.update(pressure);
+            const auto measured_pressure = pressureSensor.get_data();
+            const auto pressure_fluctuation = pressure_distribution(generator);
+            const auto control_input_pressure = pressureController.control(setpoint_pressure, measured_pressure);
+            pressureSensor.update(measured_pressure + 0.05 * (measured_temperature - measured_pressure) + pressure_fluctuation + control_input_pressure);
         }
     }
 
