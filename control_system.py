@@ -17,7 +17,7 @@ class ControlSystem:
         self.lib = self.load_native_module()
         self.pointer = self.lib.ControlSystem_new()
         self.lib.ControlSystem_run(self.pointer)
-        # TODO release C object
+        self.lib.ControlSystem_delete(self.pointer)
         del self.pointer
 
     def stop(self):
@@ -44,6 +44,7 @@ class ControlSystem:
         # Define the C functions that we want to use
         ffi.cdef("""
                 void* ControlSystem_new();
+                void ControlSystem_delete(void*);
                 void ControlSystem_run(void*);
                 void ControlSystem_stop(void*);
                 void ControlSystem_toggle_pause(void*);
