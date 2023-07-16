@@ -54,6 +54,10 @@ public:
     }
 };
 
+#define STOPPED 0
+#define RUNNING 1
+#define PAUSED 2
+
 class ControlSystem
 {
 private:
@@ -61,11 +65,17 @@ private:
     PressureSensor pressureSensor;
     PIDController temperatureController;
     PIDController pressureController;
+    int run_state;
 
 public:
-    ControlSystem() : temperatureSensor(), pressureSensor(), temperatureController(1.0, 0.1, 0.05), pressureController(1.0, 0.1, 0.05) {}
+    ControlSystem() :
+        temperatureSensor(),
+        pressureSensor(),
+        temperatureController(1.0, 0.1, 0.05),
+        pressureController(1.0, 0.1, 0.05),
+        run_state(STOPPED) {}
 
-    void run(unsigned int numIterations)
+    void run()
     {
         std::default_random_engine generator;
         std::normal_distribution<double> temperature_distribution(2.0, 2.0);
@@ -77,7 +87,9 @@ public:
         double setpoint_temperature = 50.0; // Setpoint temperature in degrees Celsius
         double setpoint_pressure = 2.5;     // Setpoint pressure in atmospheres
 
-        for (int i = 0; i < numIterations; ++i)
+        run_state = RUNNING;
+
+        while (run_state != STOPPED)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -96,6 +108,11 @@ public:
         }
     }
 
+    void stop()
+    {
+        run_state = STOPPED;
+    }
+
     int get_temperature()
     {
         return temperatureSensor.get_data();
@@ -110,7 +127,8 @@ public:
 extern "C"
 {
     ControlSystem *ControlSystem_new() { return new ControlSystem(); }
-    void ControlSystem_run(ControlSystem *cs, int numIterations) { cs->run(numIterations); }
+    void ControlSystem_run(ControlSystem *cs) { cs->run(); }
+    void ControlSystem_stop(ControlSystem *cs) { cs->stop(); }
     int ControlSystem_get_temperature(ControlSystem *cs) { return cs->get_temperature(); }
     int ControlSystem_get_pressure(ControlSystem *cs) { return cs->get_pressure(); }
 }

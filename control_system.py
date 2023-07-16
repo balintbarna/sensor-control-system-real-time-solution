@@ -10,22 +10,22 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 
-NUM_ITERATIONS = 100
-
-
 class ControlSystem:
-    def __init__(self):
+    def run(self):
         self.lib = self.load_native_module()
-        self.obj = self.lib.ControlSystem_new()
+        self.pointer = self.lib.ControlSystem_new()
+        self.lib.ControlSystem_run(self.pointer)
+        # TODO release C object
+        del self.pointer
 
-    def run(self, num_iterations: int):
-        self.lib.ControlSystem_run(self.obj, num_iterations)
+    def stop(self):
+        self.lib.ControlSystem_stop(self.pointer)
 
     def get_temperature(self) -> int:
-        return self.lib.ControlSystem_get_temperature(self.obj)
+        return self.lib.ControlSystem_get_temperature(self.pointer)
 
     def get_pressure(self) -> int:
-        return self.lib.ControlSystem_get_pressure(self.obj)
+        return self.lib.ControlSystem_get_pressure(self.pointer)
 
     @staticmethod
     @cache  # run only once
@@ -36,7 +36,8 @@ class ControlSystem:
         # Define the C functions that we want to use
         ffi.cdef("""
                 void* ControlSystem_new();
-                void ControlSystem_run(void*, int);
+                void ControlSystem_run(void*);
+                void ControlSystem_stop(void*);
                 int ControlSystem_get_temperature(void*);
                 int ControlSystem_get_pressure(void*);
                 """)
@@ -45,11 +46,14 @@ class ControlSystem:
 
 def get_sensor_data(cs: ControlSystem, stop_event: Event, queue: Queue):
     while not stop_event.is_set():
-        temperature = cs.get_temperature()
-        pressure = cs.get_pressure()
-        print(type(temperature), type(pressure))
-        queue.put((temperature, pressure))
-        sleep(0.1)
+        try:
+            temperature = cs.get_temperature()
+            pressure = cs.get_pressure()
+        except AttributeError:
+            print("Control System not yet available")
+        else:
+            queue.put((temperature, pressure))
+        stop_event.wait(0.1)
 
 
 def do_plot(queue: Queue):
@@ -67,10 +71,10 @@ def do_plot(queue: Queue):
     ax.axhline(
         y=1, color="g", linestyle="--", label="Pressure Setpoint"
     )
-    def update_plot(num, x_data: list, temp_data: list, pressure_data: list, temp_line, pressure_line):
+    def update_plot(frame_index):
         try:
             temperature, pressure = queue.get_nowait()
-            x_data.append(num)
+            x_data.append(frame_index)
             temp_data.append(temperature)
             pressure_data.append(pressure)
             temp_line.set_data(x_data, temp_data)
@@ -81,11 +85,15 @@ def do_plot(queue: Queue):
         except Empty:
             return temp_line, pressure_line
 
+    def infinite_counter(start=0):
+        yield start
+        yield from infinite_counter(start + 1)
+
     _ = FuncAnimation(
         fig,
         update_plot,
-        frames=range(NUM_ITERATIONS),
-        fargs=(x_data, temp_data, pressure_data, temp_line, pressure_line),
+        frames=infinite_counter(),
+        cache_frame_data=False,
     )
     ax.legend()
     plt.show()
@@ -99,12 +107,13 @@ def main():
     with ThreadPoolExecutor(max_workers=10) as exec:
         print("Starting backend")
         futures = [exec.submit(f) for f in [
-            (lambda: cs.run(NUM_ITERATIONS)),
+            (lambda: cs.run()),
             (lambda: get_sensor_data(cs, stop_event, sensor_data)),
         ]]
         print("Starting plot")
         do_plot(sensor_data)
         print("Shutting down...")
+        cs.stop()
         stop_event.set()
     # print results and errors
     for f in futures:
