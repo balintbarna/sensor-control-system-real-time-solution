@@ -13,10 +13,12 @@ from matplotlib.widgets import Button
 
 
 class ControlSystem:
-    def run(self):
+    def run(self, target_temperature: float, target_pressure: float):
         self.lib = self.load_native_module()
         self.pointer = self.lib.ControlSystem_new()
-        self.lib.ControlSystem_run(self.pointer)
+        self.lib.ControlSystem_run(self.pointer,
+                                   target_temperature,
+                                   target_pressure)
         self.lib.ControlSystem_delete(self.pointer)
         del self.pointer
 
@@ -45,12 +47,12 @@ class ControlSystem:
         ffi.cdef("""
                 void* ControlSystem_new();
                 void ControlSystem_delete(void*);
-                void ControlSystem_run(void*);
+                void ControlSystem_run(void*, double, double);
                 void ControlSystem_stop(void*);
                 void ControlSystem_toggle_pause(void*);
                 int ControlSystem_get_state(void*);
-                int ControlSystem_get_temperature(void*);
-                int ControlSystem_get_pressure(void*);
+                double ControlSystem_get_temperature(void*);
+                double ControlSystem_get_pressure(void*);
                 """)
         return lib
 
@@ -69,7 +71,7 @@ def get_sensor_data(cs: ControlSystem, stop_event: Event, queue: Queue):
 
 
 def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
-            temperature_setpoint: int, pressure_setpoint: int):
+            temperature_setpoint: float, pressure_setpoint: float):
     fig, ax = plt.subplots()
     # Initialize the data and line objects
     x_data, temp_data, pressure_data = [], [], []
@@ -120,6 +122,8 @@ def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
 
 
 def main():
+    TARGET_TEMPERATURE = 50.
+    TARGET_PRESSURE = 2.5
     print("Starting...")
     cs = ControlSystem()
     stop_event = Event()
@@ -127,12 +131,14 @@ def main():
     with ThreadPoolExecutor(max_workers=10) as exec:
         print("Starting backend")
         futures = [exec.submit(f) for f in [
-            (lambda: cs.run()),
+            (lambda: cs.run(TARGET_TEMPERATURE, TARGET_PRESSURE)),
             (lambda: get_sensor_data(cs, stop_event, sensor_data)),
         ]]
         print("Starting plot")
-        do_plot(queue=sensor_data, toggle_pause=cs.toggle_pause,
-                temperature_setpoint=50, pressure_setpoint=2)
+        do_plot(queue=sensor_data,
+                toggle_pause=cs.toggle_pause,
+                temperature_setpoint=TARGET_TEMPERATURE,
+                pressure_setpoint=TARGET_PRESSURE)
         print("Shutting down...")
         cs.stop()
         stop_event.set()

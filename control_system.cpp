@@ -63,7 +63,7 @@ public:
         pressureController(1.0, 0.1, 0.05),
         run_state(STOPPED) {}
 
-    void run()
+    void run(const double setpoint_temperature, const double setpoint_pressure)
     {
         std::default_random_engine generator;
         std::normal_distribution<double> temperature_distribution(2.0, 2.0);
@@ -71,9 +71,6 @@ public:
 
         temperatureSensor.update(20.0); // Initial temperature in degrees Celsius
         pressureSensor.update(1.0); // Initial pressure in atmospheres
-
-        const auto setpoint_temperature = 50.0; // Setpoint temperature in degrees Celsius
-        const auto setpoint_pressure = 2.0;     // Setpoint pressure in atmospheres
 
         run_state = RUNNING;
 
@@ -112,12 +109,12 @@ public:
         return run_state;
     }
 
-    int get_temperature()
+    double get_temperature()
     {
         return temperatureSensor.get_data();
     }
 
-    int get_pressure()
+    double get_pressure()
     {
         return pressureSensor.get_data();
     }
@@ -127,10 +124,10 @@ extern "C"
 {
     ControlSystem *ControlSystem_new() { return new ControlSystem(); }
     void ControlSystem_delete(ControlSystem *cs) { delete cs; }
-    void ControlSystem_run(ControlSystem *cs) { cs->run(); }
+    void ControlSystem_run(ControlSystem *cs, double temperature, double pressure) { cs->run(temperature, pressure); }
     void ControlSystem_stop(ControlSystem *cs) { cs->stop(); }
     void ControlSystem_toggle_pause(ControlSystem *cs) { cs->toggle_pause(); }
     int ControlSystem_get_state(ControlSystem *cs) { return cs->get_state(); }
-    int ControlSystem_get_temperature(ControlSystem *cs) { return cs->get_temperature(); }
-    int ControlSystem_get_pressure(ControlSystem *cs) { return cs->get_pressure(); }
+    double ControlSystem_get_temperature(ControlSystem *cs) { return cs->get_temperature(); }
+    double ControlSystem_get_pressure(ControlSystem *cs) { return cs->get_pressure(); }
 }
