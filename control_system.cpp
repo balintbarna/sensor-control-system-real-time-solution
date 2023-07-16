@@ -22,18 +22,6 @@ public:
     }
 };
 
-class TemperatureSensor : public Sensor
-{
-public:
-    TemperatureSensor() : Sensor() {}
-};
-
-class PressureSensor : public Sensor
-{
-public:
-    PressureSensor() : Sensor() {}
-};
-
 class PIDController
 {
 private:
@@ -61,8 +49,8 @@ public:
 class ControlSystem
 {
 private:
-    TemperatureSensor temperatureSensor;
-    PressureSensor pressureSensor;
+    Sensor temperatureSensor;
+    Sensor pressureSensor;
     PIDController temperatureController;
     PIDController pressureController;
     int run_state;
