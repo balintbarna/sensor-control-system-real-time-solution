@@ -1,3 +1,2 @@
-.vscode/c_cpp_properties.json
-.vscode/tasks.json
-control_system.dll
+.vscode/
+*.dll
