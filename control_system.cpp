@@ -37,10 +37,13 @@ public:
         setpoint = sp;
     }
 
-    double control(double pv)
+    double control(double measurement, double dt = 0.1)
     {
-        double error = setpoint - pv;
-        return kp * error;
+        double error = setpoint - measurement;
+        integral += error * dt;
+        double derivative = (error - prev_error) / dt;
+        prev_error = error;
+        return kp * error + ki * integral + kd * derivative;
     }
 };
 
@@ -61,8 +64,8 @@ public:
     ControlSystem() :
         temperatureSensor(),
         pressureSensor(),
-        temperatureController(1.0, 0.1, 0.05),
-        pressureController(1.0, 0.1, 0.05),
+        temperatureController(1.0, 0.2, 0.0),
+        pressureController(1.0, 0.2, 0.03),
         run_state(STOPPED) {}
 
     void run(const double target_temperature, const double target_pressure)
