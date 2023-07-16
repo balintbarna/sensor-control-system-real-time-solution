@@ -38,7 +38,7 @@ public:
 
         double error = setpoint - pv;
 
-        return 0.0;
+        return kp * error;
     }
 };
 
@@ -73,7 +73,7 @@ public:
         pressureSensor.update(1.0); // Initial pressure in atmospheres
 
         const auto setpoint_temperature = 50.0; // Setpoint temperature in degrees Celsius
-        const auto setpoint_pressure = 2.5;     // Setpoint pressure in atmospheres
+        const auto setpoint_pressure = 2.0;     // Setpoint pressure in atmospheres
 
         run_state = RUNNING;
 

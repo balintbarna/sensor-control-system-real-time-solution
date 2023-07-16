@@ -69,7 +69,7 @@ def get_sensor_data(cs: ControlSystem, stop_event: Event, queue: Queue):
 
 
 def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
-            temperature_setpoint = 20, pressure_setpoint = 1):
+            temperature_setpoint: int, pressure_setpoint: int):
     fig, ax = plt.subplots()
     # Initialize the data and line objects
     x_data, temp_data, pressure_data = [], [], []
@@ -131,7 +131,8 @@ def main():
             (lambda: get_sensor_data(cs, stop_event, sensor_data)),
         ]]
         print("Starting plot")
-        do_plot(queue=sensor_data, toggle_pause=cs.toggle_pause)
+        do_plot(queue=sensor_data, toggle_pause=cs.toggle_pause,
+                temperature_setpoint=50, pressure_setpoint=2)
         print("Shutting down...")
         cs.stop()
         stop_event.set()
