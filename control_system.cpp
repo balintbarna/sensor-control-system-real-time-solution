@@ -26,18 +26,20 @@ class PIDController
 {
 private:
     double kp, ki, kd;
+    double setpoint;
     double prev_error;
     double integral;
 
 public:
-    PIDController(double kp, double ki, double kd) : kp(kp), ki(ki), kd(kd), prev_error(0), integral(0) {}
+    PIDController(double kp, double ki, double kd) : kp(kp), ki(ki), kd(kd), setpoint(0), prev_error(0), integral(0) {}
 
-    double control(double setpoint, double pv)
+    void setSetpoint(double sp) {
+        setpoint = sp;
+    }
+
+    double control(double pv)
     {
-        // TODO: Your implementation here
-
         double error = setpoint - pv;
-
         return kp * error;
     }
 };
@@ -63,17 +65,21 @@ public:
         pressureController(1.0, 0.1, 0.05),
         run_state(STOPPED) {}
 
-    void run(const double setpoint_temperature, const double setpoint_pressure)
+    void run(const double target_temperature, const double target_pressure)
     {
+        // setup for random fluctuation
         std::default_random_engine generator;
         std::normal_distribution<double> temperature_distribution(2.0, 2.0);
         std::normal_distribution<double> pressure_distribution(0.5, 0.5);
-
-        temperatureSensor.update(20.0); // Initial temperature in degrees Celsius
-        pressureSensor.update(1.0); // Initial pressure in atmospheres
-
+        // Set initial values in ...
+        temperatureSensor.update(20.0); // Celsius
+        pressureSensor.update(1.0); // atmospheres
+        // Set target values
+        temperatureController.setSetpoint(target_temperature);
+        pressureController.setSetpoint(target_pressure);
+        //
         run_state = RUNNING;
-
+        //
         while (run_state != STOPPED)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -82,13 +88,13 @@ public:
             // Update temperature based on previous temperature, random fluctuations, and control input
             const auto measured_temperature = temperatureSensor.get_data();
             const auto temperature_fluctuation = temperature_distribution(generator);
-            const auto control_input_temperature = temperatureController.control(setpoint_temperature, measured_temperature);
+            const auto control_input_temperature = temperatureController.control(measured_temperature);
             temperatureSensor.update(measured_temperature + -0.1 * (measured_temperature - 20) + temperature_fluctuation + control_input_temperature);
 
             // Update pressure based on temperature (assuming ideal gas), random fluctuations, and control input
             const auto measured_pressure = pressureSensor.get_data();
             const auto pressure_fluctuation = pressure_distribution(generator);
-            const auto control_input_pressure = pressureController.control(setpoint_pressure, measured_pressure);
+            const auto control_input_pressure = pressureController.control(measured_pressure);
             pressureSensor.update(measured_pressure + 0.05 * (measured_temperature - measured_pressure) + pressure_fluctuation + control_input_pressure);
         }
     }
