@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from queue import Empty, Queue
 from threading import Event
-from time import sleep
 from traceback import print_exc
 #
 from cffi import FFI
@@ -56,21 +55,17 @@ def get_sensor_data(cs: ControlSystem, stop_event: Event, queue: Queue):
         stop_event.wait(0.1)
 
 
-def do_plot(queue: Queue):
+def do_plot(queue: Queue, temperature_setpoint = 20, pressure_setpoint = 1):
     fig, ax = plt.subplots()
     # Initialize the data and line objects
-    x_data = []
-    temp_data = []
-    pressure_data = []
-    (temp_line,) = ax.plot(x_data, temp_data, label="Temperature")
-    (pressure_line,) = ax.plot(x_data, pressure_data, label="Pressure")
+    x_data, temp_data, pressure_data = [], [], []
+    temp_line = ax.plot(x_data, temp_data, label="Temperature")[0]
+    pressure_line = ax.plot(x_data, pressure_data, label="Pressure")[0]
     # Add horizontal lines for the setpoints
-    ax.axhline(
-        y=20, color="r", linestyle="--", label="Temperature Setpoint"
-    )
-    ax.axhline(
-        y=1, color="g", linestyle="--", label="Pressure Setpoint"
-    )
+    ax.axhline(y=temperature_setpoint, color="r",
+               linestyle="--", label="Temperature Setpoint")
+    ax.axhline(y=pressure_setpoint, color="g",
+               linestyle="--", label="Pressure Setpoint")
     def update_plot(frame_index):
         try:
             temperature, pressure = queue.get_nowait()
