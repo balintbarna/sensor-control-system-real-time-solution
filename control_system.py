@@ -6,6 +6,7 @@ from traceback import print_exc
 from typing import Callable
 #
 from cffi import FFI
+from funcy import ignore
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button
@@ -85,19 +86,23 @@ def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
         pause_button.label.set_text(
             "Resume" if pause_button.label.get_text() == "Pause" else "Pause")
     pause_button.on_clicked(adv_toggle_pause)
+    @ignore(IndexError)
+    def get_frame():
+        return x_data[-1] + 1
     def update_plot(frame_index):
         try:
             temperature, pressure = queue.get_nowait()
-            x_data.append(frame_index)
+        except Empty:
+            pass
+        else:
+            x_data.append(get_frame() or frame_index)
             temp_data.append(temperature)
             pressure_data.append(pressure)
             temp_line.set_data(x_data, temp_data)
             pressure_line.set_data(x_data, pressure_data)
             ax.relim()
             ax.autoscale_view()
-            return temp_line, pressure_line
-        except Empty:
-            return temp_line, pressure_line
+        return temp_line, pressure_line
 
     def infinite_counter(start=0):
         yield start
