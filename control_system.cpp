@@ -92,6 +92,7 @@ public:
         while (run_state != STOPPED)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (run_state == PAUSED) continue;
 
             // Update temperature based on previous temperature, random fluctuations, and control input
             double temperature_fluctuation = temperature_distribution(generator);
@@ -113,6 +114,17 @@ public:
         run_state = STOPPED;
     }
 
+    void toggle_pause()
+    {
+        if (run_state == PAUSED) run_state = RUNNING;
+        else run_state = PAUSED;
+    }
+
+    int get_state()
+    {
+        return run_state;
+    }
+
     int get_temperature()
     {
         return temperatureSensor.get_data();
@@ -129,6 +141,8 @@ extern "C"
     ControlSystem *ControlSystem_new() { return new ControlSystem(); }
     void ControlSystem_run(ControlSystem *cs) { cs->run(); }
     void ControlSystem_stop(ControlSystem *cs) { cs->stop(); }
+    void ControlSystem_toggle_pause(ControlSystem *cs) { cs->toggle_pause(); }
+    int ControlSystem_get_state(ControlSystem *cs) { return cs->get_state(); }
     int ControlSystem_get_temperature(ControlSystem *cs) { return cs->get_temperature(); }
     int ControlSystem_get_pressure(ControlSystem *cs) { return cs->get_pressure(); }
 }

@@ -3,10 +3,12 @@ from functools import cache
 from queue import Empty, Queue
 from threading import Event
 from traceback import print_exc
+from typing import Callable
 #
 from cffi import FFI
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Button
 
 
 class ControlSystem:
@@ -19,6 +21,12 @@ class ControlSystem:
 
     def stop(self):
         self.lib.ControlSystem_stop(self.pointer)
+
+    def toggle_pause(self):
+        self.lib.ControlSystem_toggle_pause(self.pointer)
+
+    def is_running(self) -> bool:
+        return self.lib.ControlSystem_get_state(self.pointer) == 1
 
     def get_temperature(self) -> int:
         return self.lib.ControlSystem_get_temperature(self.pointer)
@@ -37,6 +45,8 @@ class ControlSystem:
                 void* ControlSystem_new();
                 void ControlSystem_run(void*);
                 void ControlSystem_stop(void*);
+                void ControlSystem_toggle_pause(void*);
+                int ControlSystem_get_state(void*);
                 int ControlSystem_get_temperature(void*);
                 int ControlSystem_get_pressure(void*);
                 """)
@@ -45,17 +55,19 @@ class ControlSystem:
 
 def get_sensor_data(cs: ControlSystem, stop_event: Event, queue: Queue):
     while not stop_event.is_set():
+        stop_event.wait(0.1)
         try:
+            if not cs.is_running(): continue
             temperature = cs.get_temperature()
             pressure = cs.get_pressure()
         except AttributeError:
-            print("Control System not yet available")
+            print("Control System not available")
         else:
             queue.put((temperature, pressure))
-        stop_event.wait(0.1)
 
 
-def do_plot(queue: Queue, temperature_setpoint = 20, pressure_setpoint = 1):
+def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
+            temperature_setpoint = 20, pressure_setpoint = 1):
     fig, ax = plt.subplots()
     # Initialize the data and line objects
     x_data, temp_data, pressure_data = [], [], []
@@ -66,6 +78,13 @@ def do_plot(queue: Queue, temperature_setpoint = 20, pressure_setpoint = 1):
                linestyle="--", label="Temperature Setpoint")
     ax.axhline(y=pressure_setpoint, color="g",
                linestyle="--", label="Pressure Setpoint")
+    pause_button = Button(fig.add_axes([0.7, 0.9, 0.2, 0.075]),
+                          "Pause")
+    def adv_toggle_pause(*a, **kw):
+        toggle_pause()
+        pause_button.label.set_text(
+            "Resume" if pause_button.label.get_text() == "Pause" else "Pause")
+    pause_button.on_clicked(adv_toggle_pause)
     def update_plot(frame_index):
         try:
             temperature, pressure = queue.get_nowait()
@@ -106,7 +125,7 @@ def main():
             (lambda: get_sensor_data(cs, stop_event, sensor_data)),
         ]]
         print("Starting plot")
-        do_plot(sensor_data)
+        do_plot(queue=sensor_data, toggle_pause=cs.toggle_pause)
         print("Shutting down...")
         cs.stop()
         stop_event.set()
