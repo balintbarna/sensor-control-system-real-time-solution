@@ -19,7 +19,6 @@ class ControlSystem:
         self.lib.ControlSystem_run(self.pointer,
                                    target_temperature,
                                    target_pressure)
-        self.lib.ControlSystem_delete(self.pointer)
         del self.pointer
 
     def stop(self):
@@ -46,7 +45,6 @@ class ControlSystem:
         # Define the C functions that we want to use
         ffi.cdef("""
                 void* ControlSystem_new();
-                void ControlSystem_delete(void*);
                 void ControlSystem_run(void*, double, double);
                 void ControlSystem_stop(void*);
                 void ControlSystem_toggle_pause(void*);

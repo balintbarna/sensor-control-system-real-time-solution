@@ -197,10 +197,10 @@ private:
     BUFFER_T control_pressure;
 };
 
+
 extern "C"
 {
     ControlSystem *ControlSystem_new() { return new ControlSystem(); }
-    void ControlSystem_delete(ControlSystem *cs) { delete cs; }
     void ControlSystem_run(ControlSystem *cs, double temperature, double pressure) { (*cs)(temperature, pressure); }
     void ControlSystem_stop(ControlSystem *cs) { cs->stop(); }
     void ControlSystem_toggle_pause(ControlSystem *cs) { cs->toggle_pause(); }
