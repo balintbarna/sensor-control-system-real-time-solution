@@ -108,8 +108,9 @@ def do_plot(*, queue: Queue, toggle_pause: Callable[[], None],
         return temp_line, pressure_line
 
     def infinite_counter(start=0):
-        yield start
-        yield from infinite_counter(start + 1)
+        while True:
+            yield start
+            start += 1
 
     _ = FuncAnimation(
         fig,
