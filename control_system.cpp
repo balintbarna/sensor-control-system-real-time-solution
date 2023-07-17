@@ -1,8 +1,9 @@
 #include <atomic>
-#include <iostream>
-#include <thread>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
 #include <random>
+#include <thread>
 //
 #include "threading.hpp"
 
@@ -14,9 +15,18 @@
 
 #define BUFFER_T std::atomic<double>
 #define STATE_T std::atomic<int>
+#define DIV << ";" <<
 #define STOPPED 0
 #define RUNNING 1
 #define PAUSED 2
+
+
+auto timestamp()
+{
+    auto now = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::system_clock::to_time_t(now);
+    return std::put_time(std::localtime(&timestamp), "%Y-%m-%d %H:%M:%S");
+}
 
 
 template <typename F>
@@ -98,6 +108,9 @@ public:
         std::default_random_engine generator;
         std::normal_distribution<double> temperature_distribution(2.0, 2.0);
         std::normal_distribution<double> pressure_distribution(0.5, 0.5);
+        // Setup logger
+        std::ofstream logfile("log.csv", std::ios::out);  // File stream for logging
+        logfile << "timestamp" DIV "temp_s" DIV "pres_s" DIV "temp_c" DIV "pres_c" << std::endl;
         // Ready to start
         run_state = RUNNING;
         {
@@ -132,6 +145,15 @@ public:
             }));
             execute(loopify(run_state, controller_cycle_ms, [&]{
                 pressureController(control_pressure, measured_pressure);
+            }));
+            // start logger
+            execute(loopify(run_state, sim_cycle_ms, [&]{
+                logfile << timestamp()
+                DIV measured_temperature
+                DIV measured_pressure
+                DIV control_temperature
+                DIV control_pressure
+                << std::endl;
             }));
             // exits when all threads in threadpool have exited
         }
