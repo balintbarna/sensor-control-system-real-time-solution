@@ -13,7 +13,7 @@ from matplotlib.widgets import Button
 
 
 class ControlSystem:
-    def run(self, target_temperature: float, target_pressure: float):
+    def __call__(self, target_temperature: float, target_pressure: float):
         self.lib = self.load_native_module()
         self.pointer = self.lib.ControlSystem_new()
         self.lib.ControlSystem_run(self.pointer,
@@ -125,22 +125,22 @@ def main():
     TARGET_TEMPERATURE = 50.
     TARGET_PRESSURE = 2.5
     print("Starting...")
-    cs = ControlSystem()
+    control = ControlSystem()
     stop_event = Event()
     sensor_data = Queue()
     with ThreadPoolExecutor(max_workers=10) as exec:
         print("Starting backend")
         futures = [exec.submit(f) for f in [
-            (lambda: cs.run(TARGET_TEMPERATURE, TARGET_PRESSURE)),
-            (lambda: get_sensor_data(cs, stop_event, sensor_data)),
+            (lambda: control(TARGET_TEMPERATURE, TARGET_PRESSURE)),
+            (lambda: get_sensor_data(control, stop_event, sensor_data)),
         ]]
         print("Starting plot")
         do_plot(queue=sensor_data,
-                toggle_pause=cs.toggle_pause,
+                toggle_pause=control.toggle_pause,
                 temperature_setpoint=TARGET_TEMPERATURE,
                 pressure_setpoint=TARGET_PRESSURE)
         print("Shutting down...")
-        cs.stop()
+        control.stop()
         stop_event.set()
     # print results and errors
     for f in futures:
